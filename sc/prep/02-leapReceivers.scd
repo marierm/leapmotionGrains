@@ -4,13 +4,19 @@
 // messages between 0 and 1 and to set a bus to that value.  Some OSC
 // path have more than one parameter (x,y,z or yaw,pitch,roll); this
 // requires multichannel buses.
+
+// When this file is loaded, ~leapReceivers is an IdentityDictionary
+// that contains names -> ~leapReceiver Protos.  The ~leapConfig array
+// contains all configuration: name, oscPaths and specArray
+// (calibration data).
+
 ~leapReceiver = Proto({
-	~name = \defaultLeap;
-	~oscPath = "/leapmotion";
-	~specArray = nil;	
 	~port = 49999;	// Ephemeral port.
 	~print = true;
-	~prep = {
+	~initialize = { |name, oscPath, specArray|
+		~name = name ? \defaultLeap;
+		~oscPath = oscPath ? "/leapmotion";
+		~specArray = specArray;	
 		~specs = ~specArray.collect(_.asSpec);
 		~numChan = ~specs.size;
 		~bus = Bus.control(Server.default, ~numChan);
@@ -25,6 +31,7 @@
 				});
 			);
 		}.inEnvir, ~oscPath, recvPort: ~port);
+		currentEnvironment;
 	};
 	~calibrate = {
 		~specs.do({ |i|
@@ -66,7 +73,7 @@
 // gives : [
 // [\name, "path", [ [spec], [spec], ... ] ],
 // [\name, "path", [ [spec], [spec], ... ] ], ... ]
-~leapReceivers = [
+~leapConfig = [
 	[
 		\numHands,
 		\left, \lOrient, \lPos, \lSphere, 
@@ -92,17 +99,17 @@
 	]
 ].flop;
 
-~leap = IdentityDictionary.new();
-~leapReceivers.do({|i|
-	~leap.put(
-		i[0], // name
-		~leapReceiver.clone({ // leapReceiver instance.
-			~name = i[0];
-			~oscPath = i[1];
-			~specArray = i[2];
-		})
-	);
-});
-
-~leap.do(_.prep);
+~leapReceivers = IdentityDictionary.newFrom (
+	~leapConfig.collect({ |item, index|
+		[ item[0],
+			~leapReceiver.new(
+				item[0], // name
+				item[1], // oscPath
+				item[2] // specArray
+			);
+		]
+	}).flatten;
+);
 )
+
+

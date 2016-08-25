@@ -23,7 +23,8 @@
 // ~leap.do(_.stopCalibration);
 
 "./prep/03-grasNullateur.scd".loadRelative; // granulator core.
-"./prep/04-liveRecording.scd".loadRelative; // live recording mechanism.
+"./prep/04-liveRecording.scd".loadRelative; // live recording mechanism (gui).
+
 
 ~recBufs[0].preRec;
 
