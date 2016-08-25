@@ -1,12 +1,13 @@
 * Description
   This repository includes code that allows a [[https://www.leapmotion.com/][Leapmotion]] to control a
   sound granulator.  A python script is used to get the data from the
-  leap.  The sensor's data is then sent as OSC messages to
+  leapmotion.  The sensor's data are then sent as OSC messages to
   SuperCollider where they are mapped to the parameters of a
   granulator.
 
 * Dependencies
-  - Linux or Mac OSX (not tested at all on Windows).
+  - Linux or Mac OSX (not tested on Windows, but it will probably work
+    with minor tweaks).
   - A [[http://store-us.leapmotion.com/products/leap-motion-controller][Leapmotion]].
   - The [[https://developer.leapmotion.com/v2][Leapmotion Desktop SDK]].
   - Python  > 2.7, < 3.0.
@@ -25,33 +26,30 @@
 * Specifications
   At this point, the python script sends only a few selected
   parameters from the leapmotion.  It sends OSC messages to address
-  224.0.0.1 on port 57120.  This is the /All Hosts/ [[https://en.wikipedia.org/wiki/Multicast_address][multicast address]],
+  224.0.0.1 on port 49999.  This is the /All Hosts/ [[https://en.wikipedia.org/wiki/Multicast_address][multicast address]],
   meaning that all machines on the same network segment should receive
-  the messages.   (Some routers may not allow multicasting.)
+  the messages.   (Some routers may not allow multicasting, though.)
 
   The address and port can easily be changed in the python script.
 
-
-** /leapmotion/numhands
-   The number of hands detected by the sensor.  This is sent only when
-   the number changes.  This is good to start and stop processes.
-** /leapmotion/hand/left
-   Number of left hands.  Sent only when it changes.
-** /leapmotion/hand/left/orientation
-   3 floats: pitch, roll, yaw (in degrees).
-** /leapmotion/hand/left/position
-   3 floats: x, y, z.
-** /leapmotion/hand/left/sphere/radius
-   One float: the radius of a sphere fit to the curvature of this
-   hand.  Small when fist is closed, large when hand is open. 
-** /leapmotion/hand/right
-   Number of right hands.  Sent only when it changes.
-** /leapmotion/hand/right/orientation
-   3 floats: pitch, roll, yaw (in degrees).
-** /leapmotion/hand/right/position
-   3 floats: x, y, z.
-** /leapmotion/hand/right/sphere/radius
-   One float: the radius of a sphere fit to the curvature of this
-   hand.  Small when fist is closed, large when hand is open. 
+  - /leapmotion/numhands :: The number of hands detected by the
+       sensor.  This is sent only when the number changes.  This is
+       good to start and stop processes.
+  - /leapmotion/hand/left :: Number of left hands.  Sent only when it
+       changes.  This is good to start and stop processes.
+  - /leapmotion/hand/left/orientation :: 3 floats: pitch, roll, yaw
+       (in degrees).
+  - /leapmotion/hand/left/position :: 3 floats: x, y, z.
+  - /leapmotion/hand/left/sphere/radius :: One float: the radius of a
+       sphere fit to the curvature of this hand.  Small when fist is
+       closed, large when hand is open.
+  - /leapmotion/hand/right :: Number of right hands.  Sent only when
+       it changes.  This is good to start and stop processes.
+  - /leapmotion/hand/right/orientation :: 3 floats: pitch, roll, yaw
+       (in degrees).
+  - /leapmotion/hand/right/position :: 3 floats: x, y, z.
+  - /leapmotion/hand/right/sphere/radius :: One float: the radius of a
+       sphere fit to the curvature of this hand.  Small when fist is
+       closed, large when hand is open.
 
  It may work with more than 2 hands, but I have not tested.
