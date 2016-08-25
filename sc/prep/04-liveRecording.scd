@@ -18,8 +18,13 @@
 			~buf = Buffer.alloc( Server.default, ~dur, 1);
 			// FFT Buffer for onset detection.
 			~fftBuf = Buffer.alloc(Server.default, 1024);
-			SynthDef(\record, {
-				arg in=0, buf=0, t_trig, id=0, fftBuf=500;
+			// Set default values here.
+			~onsetThresh = 0.7;
+			~gateThresh = 0.03;
+			~latencyComp = 448;
+			SynthDef(\record, { 
+				arg in=0, buf=0, t_trig, id=0, fftBuf=500,
+				gateThresh=0.01, onsetThresh=0.7, latencyComp=448;
 				var phasor, onsets, chain, input;
 				input = SoundIn.ar(in);
 				phasor = Phasor.ar(0, 1, 0, BufFrames.kr(buf));
@@ -30,12 +35,12 @@
 				);
 				// Onset detection: first, intense noise gating to
 				// avoid false onsets from environmental noise.
-				input = Compander.ar(input, input, -40.dbamp, 100, 1, 0.002);
+				input = Compander.ar(input, input, gateThresh, 100, 1, 0.002);
 				// Then actual onset detection.
 				chain = FFT(fftBuf, input);
-				onsets = Onsets.kr(chain, 0.7, \complex);
+				onsets = Onsets.kr(chain, onsetThresh, \complex);
 				SendReply.kr(t_trig, "/buffer_pos", phasor, id);
-				SendReply.kr(onsets, "/onset", phasor);
+				SendReply.kr(onsets, "/onset", phasor - latencyComp);
 			}).add;
 			
 			Server.default.sync; //
@@ -44,13 +49,37 @@
 				\buf, ~buf,
 				\fftBuf, ~fftBuf
 			]);
+			Server.default.sync; //
+			~setOnsetThresh.value(~onsetThresh);
+			~setGateThresh.value(~gateThresh);
+			~setLatencyComp.value(~latencyComp);
 		};
 		currentEnvironment;
 	};
+	// Change the defaults here.
+	~setOnsetThresh = { |val=0.7|
+		~onsetThresh = val;
+		~recorder.set(\onsetThresh, ~onsetThresh);
+		currentEnvironment.changed(\onsetThresh, val);
+	};
+	~setGateThresh = { |val=0.01|
+		~gateThresh = val;
+		~recorder.set(\gateThresh, ~gateThresh);
+		currentEnvironment.changed(\gateThresh, val);
+	};
+	~setLatencyComp = { |val=448|
+		~latencyComp = val;
+		~recorder.set(\latencyComp, ~latencyComp);
+		currentEnvironment.changed(\latencyComp, val);
+	};
+
 	~free = {
 		~recorder.free;
 		~buf.free;
 		~fftBuf.free;
+	};
+	~makeGui = { | winPos |
+		topEnvironment[\preRecorderGui].new(currentEnvironment, winPos);
 	};
 });
 
@@ -94,17 +123,18 @@
 					first = ~tmpOnsets.first;
 					(startPos < bufPos).if ({ // normal situation;
 						while {
-							(first.notNil) and:
-							((first <= startPos) or: (first > bufPos))
+							first.notNil.and({
+								(first <= startPos) or: (first > bufPos);
+							});
 						} {
 							~tmpOnsets.removeAt(0);
 							first = ~tmpOnsets.first;
-							// Error when first is nil.
 						};
 					},{ // recording looped and start point is ahead of end.
 						while {
-							(first.notNil) and:
-							((first > bufPos) and: (first <= startPos))
+							first.notNil.and({
+								(first <= startPos) and: (first > bufPos);
+							});
 						} {
 							~tmpOnsets.removeAt(0);
 							first = ~tmpOnsets.first;
@@ -157,6 +187,9 @@
 
 ~preRecBufferGui = Proto({
 	~initialize = { |preRecBuffer, winPos|
+		~selectionSize = 448*3;  // 30 ms, big enough to see the
+								 // onsets in sf views of longest
+								 // bufers.
 		~prb = preRecBuffer;
 		~prb.addDependant(currentEnvironment); // MVC
 		winPos = winPos ? 700@700;
@@ -168,14 +201,10 @@
 			~window.layout = HLayout(
 				~recButton = Button(~window),
 				~sf = SoundFileView(~window),
-				~onsetButton = Button(~window)
 			);
 			~sf.gridOn = false;
 			~recButton.states_(
 				[["PreRecord\n" ++ ~prb.dur.asString ++ " seconds" ]]
-			);
-			~onsetButton.states_(
-				[["Onset\nIndicator"],["BOOM !!!",nil,Color.red]]
 			);
 			~recButton.action_({ ~prb.preRec }.inEnvir);
 			~window.front;
@@ -198,7 +227,7 @@
 					~prb.onsets[id].notNil.if({
 						\frame.post; ~prb.onsets[id].postln;
 						~sf.setSelectionStart(id, ~prb.onsets[id]);
-						~sf.setSelectionSize(id, 480);
+						~sf.setSelectionSize(id, ~selectionSize);
 						~sf.setEditableSelectionStart(id, false);
 						~sf.setEditableSelectionSize(id, false);
 						~sf.setSelectionColor(id, Color.grey(0.6));
@@ -210,24 +239,138 @@
 		};
 	};
 
+	~update = { arg envir, what ... args;	// respond to a change in a model (MVC)
+		forkIfNeeded {
+			Server.default.sync;
+			what.switch(
+				\bufferUpdated,{ ~updateBufferData.value(); }
+			)
+		}
+	};
+});
+
+~preRecorderGui = Proto({
+	~initialize = { |preRecorder, winPos|
+		~pr = preRecorder;
+		~pr.addDependant(currentEnvironment); // MVC
+		winPos = winPos ? 700@700;
+		{
+			~window = Window(
+				"Pre-Recorder Settings",
+				Rect(winPos.x, winPos.y, 230, 500);
+			);
+			~window.layout = VLayout(
+				~onsetButton = Button(~window),
+				HLayout(
+					VLayout(
+						~gateThresh = Slider(~window),
+						~gateText = StaticText(~window)
+					),
+					VLayout(
+						~onsetThresh = Slider(~window),
+						~onsetText = StaticText(~window)
+					),
+					VLayout(
+						~latencyComp = Slider(~window),
+						~latencyText = StaticText(~window)
+					)
+				);
+			);
+			~onsetButton.states_(
+				[["Onset\nIndicator"],["BOOM\n!!!!",nil,Color.red]]
+			);
+			~onsetThresh.action_({ |sl|
+				// make the fader follow an amp warp.
+				~pr.setOnsetThresh(sl.value.squared);
+			}.inEnvir);
+			~gateThresh.action_({ |sl|
+				// make the fader follow an amp warp.
+				~pr.setGateThresh(sl.value.squared);
+			}.inEnvir);
+			~latencyComp.action_({ |sl|
+				// make the fader follow an amp warp.
+				~pr.setLatencyComp(
+					(sl.value * 2047).round(1)
+				);
+			}.inEnvir);
+			~window.front;
+			~window.onClose_({ // MVC
+				~pr.removeDependant(currentEnvironment);
+				~onsetOscFunc.disable;
+			}.inEnvir);
+			~gateThresh.value_(~pr.gateThresh.sqrt);
+			~onsetThresh.value_(~pr.onsetThresh.sqrt);
+			~latencyComp.value_(~pr.latencyComp / 2047);
+
+			~gateText.string_(
+				~pr.gateThresh.asString ++ "\nGate\nThreshold"
+			).align_(\center);
+			~onsetText.string_(
+				~pr.onsetThresh.asString ++ "\nOnset\nThreshold"
+			).align_(\center);
+			~latencyText.string_(
+				~pr.latencyComp.asString ++ "\nLatency\nComp."
+			).align_(\center);
+
+
+			// ~updateGateThresh.value(~pr.gateThresh);
+			// ~updateOnsetThresh.value(~pr.onsetThresh);
+			// ~updateLatencyComp.value(~pr.latencyComp);
+		}.inEnvir.defer;
+
+		// Show onsets using OSC, not MVC
+		~onsetOscFunc = OSCFunc({ |msg|
+			~updateOnsetButton.value();
+		}.inEnvir, "/onset", Server.default.addr);
+		currentEnvironment;
+	};
+
 	~updateOnsetButton = {
 		{
 			{
 				~onsetButton.value_(1);
-				0.3.wait;
+				0.1.wait;
 				~onsetButton.value_(0);
 			}.forkIfNeeded(AppClock);
 		}.inEnvir.defer;
 	};
 
+	~updateGateThresh = { |val|
+		{
+			~gateThresh.value_( val.sqrt );
+			~gateText.string_(
+				val.round(0.001).asString ++ "\nGate\nThreshold"
+			).align_(\center);
+		}.inEnvir;
+	};
+
+	
+	~updateOnsetThresh = { |val|
+		{
+			~onsetThresh.value_( val.sqrt );
+			~onsetText.string_(
+				val.round(0.001).asString ++ "\nOnset\nThreshold"
+			).align_(\center);
+		}.inEnvir;
+	};
+
+	~updateLatencyComp = { |val|
+		{
+			~latencyComp.value_( val / 2047 );
+			~latencyText.string_(
+				val.round(1).asString ++ "\nLatency\nComp."
+			).align_(\center);
+		}.inEnvir;
+	};
+
 	~update = { arg envir, what ... args;	// respond to a change in a model (MVC)
-		forkIfNeeded {
-			Server.default.sync;
+		{
 			what.switch(
-				\bufferUpdated,{ ~updateBufferData.value(); },
-				\onsetDetected,{ ~updateOnsetButton.value(); }
+				\onsetThresh, ~updateOnsetThresh.value(args[0]),
+				\gateThresh, ~updateGateThresh.value(args[0]),
+				\latencyComp, ~updateLatencyComp.value(args[0])
 			)
-		}
+		}.forkIfNeeded(AppClock);
 	};
 });
 
@@ -243,9 +386,11 @@ Server.default.sync;
 ~bufferData = Array.fill(~recBufs.size, { [] });
 
 Server.default.sync;
+// make guis;
+~guis = ~recBufs.collect({|i,j|
+	i.makeGui(Point(800, 750 - (j * 120) ));
+});
+~guig = ~lc.makeGui(570@300);
 }
 );
-// ~gui = ~recBufs[0].makeGui(700@700);
-
-
 
