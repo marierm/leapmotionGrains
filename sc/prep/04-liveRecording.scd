@@ -11,7 +11,7 @@
 
 ~preRecorder = Proto({
 	~sr = Server.default.sampleRate;
-	~initialize = { |dur=120|
+	~initialize = { |dur=30|
 		forkIfNeeded {
 			~dur = ~sr * dur; // Defaults to 2 minutes seconds at 48000.
 			// Buffer to continuously record input.
@@ -21,10 +21,10 @@
 			// Set default values here.
 			~onsetThresh = 0.7;
 			~gateThresh = 0.03;
-			~latencyComp = 448;
+			~latencyComp = 480;
 			SynthDef(\record, { 
 				arg in=0, buf=0, t_trig, id=0, fftBuf=500,
-				gateThresh=0.01, onsetThresh=0.7, latencyComp=448;
+				gateThresh=0.01, onsetThresh=0.7, latencyComp=480;
 				var phasor, onsets, chain, input;
 				input = SoundIn.ar(in);
 				phasor = Phasor.ar(0, 1, 0, BufFrames.kr(buf));
@@ -67,7 +67,7 @@
 		~recorder.set(\gateThresh, ~gateThresh);
 		currentEnvironment.changed(\gateThresh, val);
 	};
-	~setLatencyComp = { |val=448|
+	~setLatencyComp = { |val=480|
 		~latencyComp = val;
 		~recorder.set(\latencyComp, ~latencyComp);
 		currentEnvironment.changed(\latencyComp, val);
@@ -115,40 +115,43 @@
 		~oscFunc = OSCFunc({ |msg|
 			var nodeID, bufnum, bufPos, startPos, first;
 			#nodeID, bufnum, bufPos = msg[1..3];
+			startPos = (bufPos - ~frames) % ~liveRecBuf.numFrames;
 			(bufnum == ~buf.bufnum and:	//make sure the message is for us.
 				~liveRecSynth.nodeID == nodeID ).if ({ 
 					~copyFunc.value(bufPos); // and copy.
 					// Reposition onsets according to this ~buf
-					startPos = (bufPos - ~frames) % ~liveRecBuf.numFrames;
-					first = ~tmpOnsets.first;
-					(startPos < bufPos).if ({ // normal situation;
-						while {
-							first.notNil.and({
-								(first <= startPos) or: (first > bufPos);
-							});
-						} {
-							~tmpOnsets.removeAt(0);
-							first = ~tmpOnsets.first;
-						};
-					},{ // recording looped and start point is ahead of end.
-						while {
-							first.notNil.and({
-								(first <= startPos) and: (first > bufPos);
-							});
-						} {
-							~tmpOnsets.removeAt(0);
-							first = ~tmpOnsets.first;
-						};
-					});
 					~onsets = ((~tmpOnsets - startPos) % ~frames).sort;
 					// "Onsets are at: ".post;
 					// ~onsets.postln;
 				});
 		}.inEnvir, "/buffer_pos", Server.default.addr);
 		~onsetOscFunc = OSCFunc({ |msg|
-			var bufPos;
+			var bufPos, startPos, first;
 			bufPos = msg[3];
 			~tmpOnsets.add(bufPos);
+			// Remove temporary onsets that are older than ~dur.
+			startPos = (bufPos - ~frames) % ~liveRecBuf.numFrames;
+			first = ~tmpOnsets.first;
+			(startPos < bufPos).if ({ // normal situation;
+				while {
+					first.notNil.and({
+						(first <= startPos) or: (first > bufPos);
+					});
+				} {
+					~tmpOnsets.removeAt(0);
+					first = ~tmpOnsets.first;
+				};
+			},{ // recording looped and start point is ahead of end.
+				while {
+					first.notNil.and({
+						(first <= startPos) and: (first > bufPos);
+					});
+				} {
+					~tmpOnsets.removeAt(0);
+					first = ~tmpOnsets.first;
+				};
+			});
+
 			// "Temporary onsets: ".post;
 			// ~tmpOnsets.postln;
 			currentEnvironment.changed(\onsetDetected);
@@ -187,7 +190,7 @@
 
 ~preRecBufferGui = Proto({
 	~initialize = { |preRecBuffer, winPos|
-		~selectionSize = 448*3;  // 30 ms, big enough to see the
+		~selectionSize = 480*3;  // 30 ms, big enough to see the
 								 // onsets in sf views of longest
 								 // bufers.
 		~prb = preRecBuffer;

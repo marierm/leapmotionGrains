@@ -84,5 +84,6 @@
 		~envBufs.do(_.free);
 	};
 });
-~gr = ~granulator.copy; ~gr.prep;
+~gr = ~granulator.copy;
+~gr.prep;
 )
