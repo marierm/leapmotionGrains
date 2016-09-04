@@ -34,7 +34,7 @@
 
 		// Load test samples in buffers.
 		~fileNames = List[];
-		~buffers = "media/*.wav".resolveRelative.pathMatch.collect({ |path|
+		~buffers = "../media/*.wav".resolveRelative.pathMatch.collect({ |path|
 			~fileNames.add(path.basename); // Keep file names in ~fileNames.
 			Buffer.read(Server.default, path);
 		});
@@ -56,10 +56,10 @@
 				dur: granDur,
 				sndbuf: bufnum,
 				rate: rate,
-				pos: MouseX.kr(0,1),
+				pos: pos,
 				interp: 2,
 				pan: pan,
-				envbufnum: MouseY.kr(~envBufs[0].bufnum, ~envBufs.last.bufnum),
+				envbufnum: env,
 				rate: rate,
 				maxGrains: 512,
 				mul: amp,
