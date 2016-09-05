@@ -10,7 +10,6 @@
 // dewdrop_lib
 
 
-
 "./prep/01-startPython.scd".loadRelative; // Start the python process.
 "./prep/02-leapReceivers.scd".loadRelative; // Create the OSC receivers.
 // ~leap[\numHands], ~leap[\lPos], ~leap[\rPos], ~leap[\lOrient], ~leap[\rOrient]
@@ -25,12 +24,8 @@
 "./prep/03-grasNullateur.scd".loadRelative; // granulator core.
 "./prep/04-liveRecording.scd".loadRelative; // live recording mechanism (gui).
 
-~gr.play; // Start granulator.
-
-"./prep/05-mapping.scd".loadRelative; // 
-~link1.free;
-
-
+"./prep/05-mapping.scd".loadRelative; //
+"./prep/06-mediator.scd".loadRelative; // 
 
 ~recBufs[0].preRec;
 
