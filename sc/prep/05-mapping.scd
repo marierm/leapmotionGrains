@@ -3,7 +3,11 @@
 // - source : a Symbol that is a key in the ~leapReceivers dictionary.
 // - dests : an Array of Symbols that are parameters of the grasNullateur Synth.
 // - specs : an Array of  ControlSpecs for mapping the data.
-// - synth : The granulator synth.
+// - granu : The granulator synth.
+// - offset : A channel offset to acces leap data that has multiple parameters.
+//            For example, lOrient has pitch, roll and yaw.  To access only yaw,
+//            use offset of 2. dests and specs should be arrays with only one
+//            element.
 // 
 // This will only do one-to-one mapping.
 
@@ -22,7 +26,6 @@ forkIfNeeded {
 				~specs = specs ? Array.fill(~source.numChan, {});
 				~dests = dests ? Array.fill(~source.numChan, {});
 				~granu = granu;
-				~nodeMap = NodeMap.new;
 				~bus = Bus.control(Server.default, ~dests.size);
 				~defs = ~specs.collect({|spec, i|
 					SynthDef(
@@ -38,7 +41,7 @@ forkIfNeeded {
 				Server.default.sync;
 				~synths = ~defs.collect({ |def, i|
 					Synth.head(Server.default, def.name, [
-						\in, ~source.bus.subBus(i),
+						\in, ~source.bus.subBus(i + offset),
 						\out, ~bus.subBus(i)
 					])
 				});
@@ -57,20 +60,7 @@ forkIfNeeded {
 	});
 	
 
-	~link1 = ~link.new(
-		\lOrient, 		// yaw, pitch, roll
-		[\granFreq, \granDur, \rate],
-		[[2,10].asSpec, [2, 0.01].asSpec, [0.25,4.0,\exp].asSpec],
-		~gr // This granulator is created in main.scd with ~gr.play.
-	);
 
-	~link2 = ~link.new(
-		\lPos, 		// x, y, z
-		[\pos],
-		[[0,1].asSpec],
-		~gr, // This granulator is created in main.scd with ~gr.play.
-		0 // offset: 1 will link only y; 2 will link only z
-	);
 });
 
 
