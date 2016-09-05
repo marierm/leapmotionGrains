@@ -2,7 +2,7 @@
 ~granulator = Proto({
 	~numChan = 2; // Set to number of speakers.
 	~envelopeSize = 2048;
-	~prep =  {
+	~initialize =  {
 		// A bunch of different envelopes to choose from.
 		~envs = [
 			// 20 perc envelopes.
@@ -67,6 +67,7 @@
 			);
 			Out.ar(out,	sig)
 		}).add;
+		currentEnvironment;
 	};
 
 	~play = {
@@ -84,6 +85,6 @@
 		~envBufs.do(_.free);
 	};
 });
-~gr = ~granulator.copy;
-~gr.prep;
+~grLeft = ~granulator.new;
+~grRight = ~granulator.new;
 )
