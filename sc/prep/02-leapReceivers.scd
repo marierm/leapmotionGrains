@@ -2,7 +2,7 @@
 // A clone of this Prototype (like a class) will be created for each
 // OSC path we listen too.  The default behavior is to scale all
 // messages between 0 and 1 and to set a bus to that value.  Some OSC
-// path have more than one parameter (x,y,z or yaw,pitch,roll); this
+// path have more than one parameter (x,y,z or pitch,roll,yaw); this
 // requires multichannel buses.
 
 // When this file is loaded, ~leapReceivers is an IdentityDictionary
@@ -111,5 +111,3 @@
 	}).flatten;
 );
 )
-
-
