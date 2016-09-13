@@ -5,7 +5,7 @@
 // uses that position to copy a section of the ~preRecorder buffer
 // into its own buffer.
 
-//  By default, I create 5 ~preRecBuffers that old 4, 5, 7, 10 and 15
+//  By default, I create 4 ~preRecBuffers that old 5 and 7 
 //  seconds of sound.  The same ~preRecorder is used for all
 //  ~preRecBuffers.  Only one channel is assumed at this point.
 
@@ -164,6 +164,12 @@
 		// ID is the bufnum of ~buf so we know where to copy.
 		~liveRecSynth.set(\id, ~buf.bufnum, \t_trig, 1.0);
 	};
+	// Tell a subscriber to use this buffer.
+	// ~grLeft and ~grRight subscribe to these messages.
+	~setBuffer = { |name|
+		currentEnvironment.changed(\setBuffer, ~buf, name);
+	};
+
 	~free = {
 		~buf.free;
 		~oscFunc.disable; // not "free"
@@ -204,12 +210,24 @@
 			~window.layout = HLayout(
 				~recButton = Button(~window),
 				~sf = SoundFileView(~window),
+				VLayout(
+					~leftHandButton = Button(~window),
+					~rightHandButton = Button(~window)
+				)
 			);
 			~sf.gridOn = false;
 			~recButton.states_(
 				[["PreRecord\n" ++ ~prb.dur.asString ++ " seconds" ]]
 			);
+			~leftHandButton.states_(
+				[["Left Hand"]]
+			);
+			~rightHandButton.states_(
+				[["Right Hand"]]
+			);
 			~recButton.action_({ ~prb.preRec }.inEnvir);
+			~leftHandButton.action_({~prb.setBuffer('left')}.inEnvir);
+			~rightHandButton.action_({~prb.setBuffer('right')}.inEnvir);
 			~window.front;
 			~updateBufferData.value();
 			~window.onClose_({ // MVC
@@ -378,15 +396,15 @@
 });
 
 
-~lc = ~preRecorder.new(120);
+~lc = ~preRecorder.new(30);
 Server.default.sync;
 // make 5 preRecBuffers
 // init them with 4, 5, 7, 10 and 15 second buffers
-~recBufs = [4,5,7,10,15].collect({|i|
+~recBufs = [5,5,7,7].collect({|i|
 	~preRecBuffer.new(~lc, i, 1);
 });
 // And make a gui for this stuff.
-~bufferData = Array.fill(~recBufs.size, { [] });
+// ~bufferData = Array.fill(~recBufs.size, { [] });
 
 Server.default.sync;
 // make guis;

@@ -2,7 +2,10 @@
 ~granulator = Proto({
 	~numChan = 2; // Set to number of speakers.
 	~envelopeSize = 2048;
-	~initialize =  {
+	~group = ParGroup.tail(Server.default);
+	~initialize =  { |name='left'|
+		~name = name; // ~granulators have a name.  This is useful to
+					 // dispatch update messages.
 		// A bunch of different envelopes to choose from.
 		~envs = [
 			// 20 perc envelopes.
@@ -39,11 +42,14 @@
 			Buffer.read(Server.default, path);
 		});
 
+		~buf = ~buffers[0];
+
 		SynthDef(\grasNullateur, {
 			arg granFreq=8, out=0, granDur=0.2, bufnum=0, rate=1,
-			pos=0.5, panW=0.0, panC=0.0, amp=0.1, env= -1;
+			pos=0.5, panW=0.0, panC=0.0, amp=0.1, env= -1, gate=1;
 			
-			var trig, sig, pan;
+			var trig, sig, pan, envelope;
+			envelope = EnvGen.kr(Env.asr(0.01,1,0.1), gate, doneAction:2);
 			trig = Impulse.ar(granFreq);
 			pan = TRand.ar(
 				lo: (panC - panW).clip(-1.0, 1.0),
@@ -65,19 +71,35 @@
 				mul: amp,
 				add: 0
 			);
-			Out.ar(out,	sig)
+			Out.ar(out,	sig * envelope)
 		}).add;
 		currentEnvironment;
 	};
 
 	~play = {
-		~granSynth = Synth.tail(Server.default, \grasNullateur, [
-			\bufnum, ~buffers[0]
+		~granSynth = Synth.tail(~group, \grasNullateur, [
+			\bufnum, ~buf
 		]);
 	};
 
 	~stop = {
-		~granSynth.free;
+		~granSynth.release;
+	};
+
+	~update = { arg envir, what ... args;	// respond to a change in a model (MVC)
+		forkIfNeeded {
+			Server.default.sync;
+			what.switch(
+				\setBuffer, {
+					var buf, name;
+					#buf, name  = args;
+					(name == ~name).if({
+						~buf = buf;
+						~granSynth.set(\bufnum, ~buf );
+					});
+				}
+			)
+		}
 	};
 
 	~free = {
@@ -85,6 +107,6 @@
 		~envBufs.do(_.free);
 	};
 });
-~grLeft = ~granulator.new;
-~grRight = ~granulator.new;
+~grLeft = ~granulator.new('left');
+~grRight = ~granulator.new('right');
 )
