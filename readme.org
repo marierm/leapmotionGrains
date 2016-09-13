@@ -23,6 +23,85 @@
   - [[https://github.com/marierm/mmExtensions][mmExtensions]]
     - This is not a Quark yet, but it will become one shortly.
 
+* How to use
+** Start up
+   1. Open the file =sc/main.scd= in the SuperCollider IDE (or in your
+      favourite text editor configured to use SC).
+   2. Start the SC Server (Cmd+B or Ctrl+B, depending on your platform).
+   3. Execute the first line of code.  To do this, position the cursor
+      at the end of the line and hit Cmd+Enter (or Ctrl+Enter).  This
+      should open a Terminal with a Python process running.  If there
+      are errors, this is most likely because some dependencies are
+      missing.
+   4. Leaving the Terminal window opened, execute the following
+      section.  To do this, position the cursor before the first
+      opening parenthesis and hit Cmd+Enter (or Ctrl+Enter).  Some GUI
+      windows shoud open.
+
+** The GUI
+*** Pre-Recorder Settings
+    The audio of the first input of SC is recorded continuously,
+    keeping only the last 30 seconds.  Every time an onset is
+    detected, the /Onset Indicator/ flashes red.  The three sliders
+    can be used to adjust parameters of the onset detector.
+
+    - Gate Threshold :: This is basically a noise gate positioned
+         before the onset detector.  Any audio quieter than that
+         threshold is ignored.
+    - Onset Threshold :: This is the threshold of the onset detector.
+         It is a sensitivity control.
+    - Latency Compensation :: Because the onset detector takes some
+         time to react, it may be useful to adjust the position of the
+         detected onsets.  When the prerecorded material will be
+         copied to another buffer, the onsets will be moved earlyer by
+         this amount of samples.  
+
+*** /x/ second Buffer
+    These windows have three buttons and a waveform display.  The
+    waveform displays a buffer that can be used by the granulator.
+    the light grey markers are positioned where onsets were detected
+    (including the compensation).
+
+    - PreRecord /x/ seconds :: Hit this button to keep the last /x/
+         seconds in a buffer.
+    - Left Hand :: Hit this button to granulate this buffer with your
+         left hand.
+    - Right Hand :: Hit this button to granulate this buffer with your
+         right hand.
+
+*** Tweaking the parameters
+    The code can be modified to get a totally different behavior, but
+    the parameters below may be of particular interest.
+
+    - Number of channels :: By default, the granulator outputs to 2
+         channels.  This can be changed to any number by changing the
+         value assigned to the =~numChan= variable in the file
+         =sc/prep/03-grasNullateur.scd= (near the top of the file).
+         It is assumed that the speakers are equidistant from and
+         uniformly distributed around the listener.  (However, this
+         should not prevent you from experimenting with various
+         speaker layouts.)
+    - Duration of buffers :: By default, two 5 second buffers and two
+         7 second buffers.  You can create as many buffers as you want
+         and they can have any duration (within the limits of your
+         hardware and your SC configuration).  This can be tweaked by
+         modifying the array =~recBufs= in the file
+         =sc/prep/04-liveRecording.scd= (near the end of the file).
+         If this array is set to =[1, 5, 10]=, you will get three
+         buffers of 1, 5 and 10 seconds.  *The duration cannot excede
+         the duration of the prerecorder.* By default, this is 30
+         seconds.  See next point to change it.
+    - Maximum duration of buffers :: When the /PreRecord x seconds/
+         button, the last /x/ seconds recorded are copied to the
+         corresponding buffer.  The behavior of the system is not
+         defined if you try to copy a duration that excedes the
+         duration of the Pre-Recorder.  You can modify the line
+         : ~lc = ~preRecorder.new(30);
+         in the file =sc/prep/04-liveRecording.scd= (near the end of
+         the file) to make the Pre-Recorder buffer longer.  In other
+         words, *the number in parentheses must be greater than the
+         greatest number in the =~recBufs= array.*
+
 * Specifications
   At this point, the python script sends only a few selected
   parameters from the leapmotion.  It sends OSC messages to address
