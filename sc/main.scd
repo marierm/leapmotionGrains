@@ -1,35 +1,45 @@
 // Make sure Leap motion daemon is started.
-// Starting leap.py may be required:
-// In a terminal, cd to  ../pythonLeap/ and type
-// python leap.py
-// python 2 is required.
-// LeapMotion SDK and liblo.
-// use pip to install liblo and thread.  (pip install)
-// SC3 plugins required
 // Required quarks:
-// dewdrop_lib
+// dewdrop_lib, wslib
+
+// Start the python process that connects to the leapmotion.
+// 1. Execute this line only once (unless python stops for some reason...)
+"./prep/01-startPython.scd".loadRelative;
+
+// 2. Execute this section.
+(
+fork {
+	"./prep/02-leapReceivers.scd".loadRelative; // Create the OSC receivers.
+	// ~leap[\numHands], ~leap[\lPos], ~leap[\rPos], ~leap[\lOrient], ~leap[\rOrient]
+	// ~leap[\lSphere], ~leap[\rOrient]
+
+	~leapReceivers.do(_.print_(false)); // Stop printing incoming OSC messages.
+	// ~leapReceivers.do(_.print_(true)); // Start printing incoming OSC messages.
+
+	// ~leap.do(_.calibration);
+	// ~leap.do(_.stopCalibration);
+	s.sync;
+	"./prep/03-grasNullateur.scd".loadRelative; // creates ~grLeft and ~grRight.
+	s.sync;
+	"./prep/04-liveRecording.scd".loadRelative; // live recording mechanism (gui).
+	s.sync;
+	"./prep/05-mapping.scd".loadRelative; //
+	s.sync;
+	"./prep/06-mediator.scd".loadRelative; //
+}
+)
 
 
-"./prep/01-startPython.scd".loadRelative; // Start the python process.
-"./prep/02-leapReceivers.scd".loadRelative; // Create the OSC receivers.
-// ~leap[\numHands], ~leap[\lPos], ~leap[\rPos], ~leap[\lOrient], ~leap[\rOrient]
-// ~leap[\lSphere], ~leap[\rOrient]
-
-~leapReceivers.do(_.print_(false)); // Stop printing incoming OSC messages.
-// ~leapReceivers.do(_.print_(true)); // Start printing incoming OSC messages.
-
-// ~leap.do(_.calibration); 
-// ~leap.do(_.stopCalibration);
-
-"./prep/03-grasNullateur.scd".loadRelative; // granulator core.
-"./prep/04-liveRecording.scd".loadRelative; // live recording mechanism (gui).
-
-"./prep/05-mapping.scd".loadRelative; //
-"./prep/06-mediator.scd".loadRelative; // 
-
-~recBufs[0].preRec;
-
-x = {|pos=0,rate=1,freq=20|GrainBuf.ar(1, Impulse.ar(freq), 0.4, ~recBufs[0].buf,rate, pos )}.play;
-x.set(\pos, (~recBufs[0].onsets[0]- 10000)/~recBufs[0].frames, \rate, 1);
-x.set(\pos, (~recBufs[0].onsets[1] - 10000)/~recBufs[0].frames , \rate, 1);
-x.set(\pos, 0, \rate, 1);
+// 3. Execute to stop and cleanup (and restart by executing the previous section).
+(
+~grLeft.free;
+~grRight.free;
+~leapReceivers.do(_.free);
+~lc.free;
+~guig.window.close;
+~recBufs.do(_.free);
+~guis.do({|i| i.window.close});
+OSCdef(\mediatorLeft).free;
+OSCdef(\mediatorRight).free;
+OSCdef(\mediatorCleanup).free;
+)
