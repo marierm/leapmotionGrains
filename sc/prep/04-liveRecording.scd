@@ -1,13 +1,19 @@
 ( forkIfNeeded {
 // The ~preRecorder is a prerec mechanism.  It continuously record in
-// a two minute buffer.  When the ~recorder synth receives a trigger
-// message, it replies its current recording position.  A preRecBuffer
-// uses that position to copy a section of the ~preRecorder buffer
-// into its own buffer.
+// a 30 second buffer (by default; duration can be changed).  When the
+// ~recorder synth receives a trigger message, it replies its current
+// recording position.  A preRecBuffer uses that position to copy a
+// section of the ~preRecorder buffer into its own buffer.
 
 //  By default, I create 4 ~preRecBuffers that old 5 and 7 
 //  seconds of sound.  The same ~preRecorder is used for all
 //  ~preRecBuffers.  Only one channel is assumed at this point.
+
+// There is also an Onset detector.  Every time an onset is detected,
+// a reply (an OSC message /onset) is sent back to the language with
+// argument a position in samples in the ~preRecorder buffer.  The
+// ~preRecBuffers store these onsets in their ~onsets array so that
+// other processes can use them.  (Granulation, for example.)
 
 ~preRecorder = Proto({
 	~sr = Server.default.sampleRate;
