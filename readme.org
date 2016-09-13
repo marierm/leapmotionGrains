@@ -46,7 +46,7 @@
     detected, the /Onset Indicator/ flashes red.  The three sliders
     can be used to adjust parameters of the onset detector.
 
-    [[file:preRecorderSettings.png][file:~/docs/leapmotionGrains/preRecorderSettings.png]]
+    [[file:preRecorderSettings.png]]
 
     - Gate Threshold :: This is basically a noise gate positioned
          before the onset detector.  Any audio quieter than that
@@ -64,7 +64,7 @@
     waveform displays a buffer that can be used by the granulator.
     the light grey markers are positioned where onsets were detected
     (including the compensation).
-    [[file:5secondBuffer.png][file:~/docs/leapmotionGrains/5secondBuffer.png]]
+    [[file:5secondBuffer.png]]
 
     - PreRecord /x/ seconds :: Hit this button to keep the last /x/
          seconds in a buffer.
